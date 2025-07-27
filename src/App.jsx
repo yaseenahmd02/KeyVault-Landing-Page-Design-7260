@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from './common/SafeIcon';
+import AdminPanel from './components/AdminPanel';
+import { saveWaitlistEntry, getWaitlistCount } from './utils/storage';
 import './App.css';
 
 const {
@@ -31,6 +33,7 @@ function App() {
   });
   const [openFaq, setOpenFaq] = useState(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -39,11 +42,34 @@ function App() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    // Here you would typically send the data to your backend
-    console.log('Form submitted:', formData);
+    setIsSubmitting(true);
+    
+    try {
+      // Save to localStorage
+      const savedEntry = saveWaitlistEntry(formData);
+      
+      if (savedEntry) {
+        console.log('Waitlist entry saved:', savedEntry);
+        setIsSubmitted(true);
+        
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          city: ''
+        });
+      } else {
+        alert('Error saving entry. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error submitting form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleFaq = (index) => {
@@ -78,6 +104,9 @@ function App() {
       answer: "We offer a 100% satisfaction guarantee. If the duplicate key doesn't work perfectly, we'll remake it for free or provide a full refund."
     }
   ];
+
+  const currentWaitlistCount = getWaitlistCount();
+  const spotsLeft = Math.max(0, 50 - currentWaitlistCount);
 
   return (
     <div className="min-h-screen bg-white">
@@ -130,6 +159,11 @@ function App() {
             </div>
             <div className="text-sm">Only ₹199 for first 50 users</div>
             <div className="text-xs opacity-90">(Regular price ₹699)</div>
+            {spotsLeft > 0 && (
+              <div className="text-xs mt-1 bg-white bg-opacity-20 rounded px-2 py-1">
+                {spotsLeft} spots left!
+              </div>
+            )}
           </motion.div>
 
           <motion.a 
@@ -304,6 +338,11 @@ function App() {
             <p className="text-slate-300">
               Lock in your ₹199 launch price today
             </p>
+            {currentWaitlistCount > 0 && (
+              <p className="text-emerald-400 text-sm mt-2">
+                {currentWaitlistCount} people have already joined!
+              </p>
+            )}
           </motion.div>
 
           {!isSubmitted ? (
@@ -366,11 +405,12 @@ function App() {
               
               <motion.button
                 type="submit"
-                className="w-full bg-emerald-500 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:bg-emerald-600 transition-all duration-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                disabled={isSubmitting}
+                className="w-full bg-emerald-500 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:bg-emerald-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
               >
-                Join Now & Lock in ₹199
+                {isSubmitting ? 'Joining...' : 'Join Now & Lock in ₹199'}
               </motion.button>
             </motion.form>
           ) : (
@@ -384,6 +424,9 @@ function App() {
               <h3 className="text-xl font-bold text-white mb-2">You're In!</h3>
               <p className="text-slate-300">
                 Thanks for joining the waitlist. We'll notify you when KeyVault launches!
+              </p>
+              <p className="text-emerald-400 text-sm mt-2">
+                You're #{currentWaitlistCount} on the list
               </p>
             </motion.div>
           )}
@@ -406,6 +449,9 @@ function App() {
           </p>
         </div>
       </footer>
+
+      {/* Admin Panel */}
+      <AdminPanel />
     </div>
   );
 }
